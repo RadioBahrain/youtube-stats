@@ -1,0 +1,16 @@
+name: youtube-stats
+id: ari:cloud:compass:bd6d77f2-88ce-4b3f-889e-e2b05884fead:component/07dfc87a-f92f-4277-82d8-eecc69e3ec4a/53803946-74e0-49e4-b075-8b1e3d2f3795
+description: null
+configVersion: 1
+typeId: SERVICE
+fields:
+  tier: 4
+links:
+  - name: null
+    type: REPOSITORY
+    url: https://github.com/RadioBahrain/youtube-stats
+relationships:
+  DEPENDS_ON: []
+labels:
+  - source:github
+customFields: null
