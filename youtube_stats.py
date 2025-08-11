@@ -14,7 +14,7 @@ def set_github_secret():
         # Set the token as a GitHub secret
         subprocess.run([
             "gh", "secret", "set", "YOUTUBE_API_KEY",
-            "--body", os.getenv("YOUTUBE_API_KEY", "AIzaSyCXg2FaDL5Elnh9y40f3pcSz91RDGvmT6c"),
+            "--body", os.getenv("YOUTUBE_API_KEY", "AIzaSyDFwpcKOitR9NQ-7GssXLmClVog1y1SsGs"),
             "--repo", "aldoyh/youtube-stats"
         ], check=True)
         print("GitHub secret set successfully")
@@ -33,7 +33,7 @@ def update_readme(latest_stats):
         f.write(new_content)
 
 # Fetch YouTube stats
-API_KEY = os.getenv("YOUTUBE_API_KEY", "AIzaSyCXg2FaDL5Elnh9y40f3pcSz91RDGvmT6c")
+API_KEY = os.getenv("YOUTUBE_API_KEY", "AIzaSyDFwpcKOitR9NQ-7GssXLmClVog1y1SsGs")
 CHANNEL_ID = "UCylIWXb8bRI0KcDeJG6H8rw"
 
 # Fetch channel statistics
