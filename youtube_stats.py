@@ -2,7 +2,24 @@ import requests
 import csv
 import os
 import subprocess
+import time
 from datetime import datetime
+
+def make_api_request(url, max_retries=3, delay=1):
+    """Make API request with retry logic"""
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"API request attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                print(f"Retrying in {delay} seconds...")
+                time.sleep(delay)
+                delay *= 2  # Exponential backoff
+            else:
+                raise
 
 # Authenticate with GitHub CLI and set secret (only needed for local setup)
 def set_github_secret():
@@ -26,7 +43,7 @@ def set_github_secret():
         # Set the token as a GitHub secret
         subprocess.run([
             "gh", "secret", "set", "YOUTUBE_API_KEY",
-            "--body", os.getenv("YOUTUBE_API_KEY", "AIzaSyDFwpcKOitR9NQ-7GssXLmClVog1y1SsGs"),
+            "--body", os.getenv("YOUTUBE_API_KEY", ""),
             "--repo", "RadioBahrain/youtube-stats"
         ], check=True)
         print("GitHub secret set successfully")
@@ -39,18 +56,32 @@ def update_readme(latest_stats):
     readme_path = "README.md"
     with open(readme_path, "r") as f:
         content = f.read()
-    # Replace placeholder with latest stats
-    new_content = content.replace("{{latest_stats}}", latest_stats)
+    
+    # Extract data from latest_stats array
+    last_updated, subscribers, views, videos, playlists = latest_stats
+    
+    # Replace placeholders with actual values
+    content = content.replace("{{last_updated}}", last_updated)
+    content = content.replace("{{subscribers}}", f"{int(subscribers):,}")
+    content = content.replace("{{views}}", f"{int(views):,}")
+    content = content.replace("{{videos}}", str(videos))
+    content = content.replace("{{playlists}}", str(playlists))
+    
     with open(readme_path, "w") as f:
-        f.write(new_content)
+        f.write(content)
 
 # Fetch YouTube stats
-API_KEY = os.getenv("YOUTUBE_API_KEY", "AIzaSyDFwpcKOitR9NQ-7GssXLmClVog1y1SsGs")
+API_KEY = os.getenv("YOUTUBE_API_KEY")
+if not API_KEY:
+    print("Error: YOUTUBE_API_KEY environment variable is not set")
+    exit(1)
+
 CHANNEL_ID = "UCylIWXb8bRI0KcDeJG6H8rw"
 
 # Fetch channel statistics
 channel_url = f"https://www.googleapis.com/youtube/v3/channels?part=statistics&id={CHANNEL_ID}&key={API_KEY}"
-channel_response = requests.get(channel_url).json()
+print("Fetching channel statistics...")
+channel_response = make_api_request(channel_url)
 if "error" in channel_response:
     print(f"Error fetching channel stats: {channel_response['error']['message']}")
     exit(1)
@@ -61,7 +92,8 @@ videos = stats["videoCount"]
 
 # Fetch playlists
 playlist_url = f"https://www.googleapis.com/youtube/v3/playlists?part=snippet&channelId={CHANNEL_ID}&key={API_KEY}&maxResults=50"
-playlist_response = requests.get(playlist_url).json()
+print("Fetching playlists...")
+playlist_response = make_api_request(playlist_url)
 if "error" in playlist_response:
     print(f"Error fetching playlists: {playlist_response['error']['message']}")
     exit(1)
@@ -81,7 +113,7 @@ with open(csv_file, "a", newline="") as f:
 latest_stats_str = f"{latest_stats[0]}|{latest_stats[1]}|{latest_stats[2]}|{latest_stats[3]}|{latest_stats[4]}"
 
 # Update README
-update_readme(latest_stats_str)
+update_readme(latest_stats)
 
 print(f"Stats saved: Subscribers={subscribers}, Views={views}, Videos={videos}, Playlists={playlists}")
 
