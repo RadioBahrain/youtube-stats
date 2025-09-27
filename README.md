@@ -6,11 +6,11 @@
 
 | Metric | Value |
 |--------|-------|
-| 📅 Last Updated | {{last_updated}} |
-| 👥 Subscribers | {{subscribers}} |
-| 👀 Total Views | {{views}} |
-| 🎥 Videos | {{videos}} |
-| 📝 Playlists | {{playlists}} |
+| 📅 Last Updated | 2025-09-27 09:55:17 |
+| 👥 Subscribers | 2,340 |
+| 👀 Total Views | 190,388 |
+| 🎥 Videos | 516 |
+| 📝 Playlists | 39 |
 
 ## 📈 Analytics Dashboard
 
