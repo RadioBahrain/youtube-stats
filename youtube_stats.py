@@ -126,6 +126,10 @@ def create_summary_stats(df):
                 ax.text(bar.get_x() + bar.get_width()/2., height + height*0.05,
                        f'{value:.1f}', ha='center', va='bottom', fontweight='bold')
             
+            plt.tight_layout()
+            plt.savefig('charts/growth_metrics.png', dpi=300, bbox_inches='tight')
+            plt.close()
+            
 def create_backup():
     """Create backup of data files"""
     try:
