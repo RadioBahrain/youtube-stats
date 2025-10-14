@@ -215,13 +215,25 @@ def set_github_secret():
         
         # Get the auth token
         token = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, check=True).stdout.strip()
-        # Set the token as a GitHub secret
+        # Set API key as secret
         subprocess.run([
             "gh", "secret", "set", "YOUTUBE_API_KEY",
             "--body", os.getenv("YOUTUBE_API_KEY", ""),
             "--repo", "RadioBahrain/youtube-stats"
         ], check=True)
-        print("GitHub secret set successfully")
+        # Set OAuth token as secret
+        if os.path.exists("token.json"):
+            with open("token.json", "r") as f:
+                token_data = f.read()
+            subprocess.run([
+                "gh", "secret", "set", "YOUTUBE_AUTH_TOKEN",
+                "--body", token_data,
+                "--repo", "aldoyh/youtube-stats"
+            ], check=True)
+            print("GitHub secrets set successfully")
+        else:
+            print("Error: token.json not found")
+            exit(1)
     except subprocess.CalledProcessError as e:
         print(f"Error setting GitHub secret: {e}")
         print("Note: This is only needed for initial local setup. In GitHub Actions, secrets are already configured.")
@@ -245,6 +257,36 @@ def update_readme(latest_stats):
     with open(readme_path, "w") as f:
         f.write(content)
 
+# Local OAuth authentication
+def get_oauth_credentials():
+    client_config = {
+        "installed": {
+            "client_id": "YOUR_CLIENT_ID",  # Replace with your Google Cloud Console client ID
+            "client_secret": "YOUR_CLIENT_SECRET",  # Replace with your client secret
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": ["urn:ietf:wg:oauth:2.0:oob"]
+        }
+    }
+    if not os.path.exists("token.json"):
+        flow = InstalledAppFlow.from_client_config(client_config, ["https://www.googleapis.com/auth/youtube.readonly"])
+        creds = flow.run_local_server(port=0)
+        with open("token.json", "w") as f:
+            json.dump({
+                "refresh_token": creds.refresh_token,
+                "token": creds.token,
+                "token_uri": creds.token_uri,
+                "client_id": creds.client_id,
+                "client_secret": creds.client_secret,
+                "scopes": creds.scopes
+            }, f)
+    else:
+        with open("token.json", "r") as f:
+            creds_data = json.load(f)
+        from google.oauth2.credentials import Credentials
+        creds = Credentials.from_authorized_user_info(creds_data, scopes=["https://www.googleapis.com/auth/youtube.readonly"])
+    return creds
+
 # Fetch YouTube stats
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 if not API_KEY:
@@ -253,7 +295,7 @@ if not API_KEY:
 
 CHANNEL_ID = "UCylIWXb8bRI0KcDeJG6H8rw"
 
-# Fetch channel statistics
+# Fetch channel statistics (subscribers, views, videos)
 channel_url = f"https://www.googleapis.com/youtube/v3/channels?part=statistics&id={CHANNEL_ID}&key={API_KEY}"
 print("Fetching channel statistics...")
 channel_response = make_api_request(channel_url)
@@ -280,11 +322,11 @@ create_backup()
 # Save to CSV
 csv_file = "youtube_stats.csv"
 file_exists = os.path.isfile(csv_file)
-latest_stats = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), subscribers, views, videos, playlists]
+latest_stats = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), subscribers, views, videos, playlists, f"{hours_watched:.2f}"]
 with open(csv_file, "a", newline="") as f:
     writer = csv.writer(f)
     if not file_exists:
-        writer.writerow(["Date", "Subscribers", "Views", "Videos", "Playlists"])
+        writer.writerow(["Date", "Subscribers", "Views", "Videos", "Playlists", "HoursWatched"])
     writer.writerow(latest_stats)
 
 # Check data integrity
@@ -292,7 +334,7 @@ if not check_data_integrity():
     print("⚠️ Data integrity check failed - proceeding with caution")
 
 # Format latest stats for README
-latest_stats_str = f"{latest_stats[0]}|{latest_stats[1]}|{latest_stats[2]}|{latest_stats[3]}|{latest_stats[4]}"
+latest_stats_str = f"{latest_stats[0]}|{latest_stats[1]}|{latest_stats[2]}|{latest_stats[3]}|{latest_stats[4]}|{latest_stats[5]}"
 
 # Update README
 update_readme(latest_stats)
