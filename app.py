@@ -147,22 +147,30 @@ class YouTubeAPIClient:
             
         Note:
             This method handles pagination to count all playlists,
-            even if there are more than 50.
+            even if there are more than 50. Has a safety limit of 100 pages
+            to prevent infinite loops from malformed API responses.
         """
         url = f"{self.base_url}/playlists?part=snippet&channelId={channel_id}&key={self.api_key}&maxResults=50"
         logger.info("Fetching playlists...")
         
         total_playlists = 0
         next_page_token = None
+        max_pages = 100  # Safety limit: max 5000 playlists (50 per page * 100 pages)
+        page_count = 0
         
         # Handle pagination to get all playlists
         while True:
+            if page_count >= max_pages:
+                logger.warning(f"Reached maximum page limit ({max_pages}). Total playlists so far: {total_playlists}")
+                break
+                
             page_url = url
             if next_page_token:
                 page_url += f"&pageToken={next_page_token}"
                 
             response = self._make_request(page_url)
             total_playlists += len(response.get("items", []))
+            page_count += 1
             
             next_page_token = response.get("nextPageToken")
             if not next_page_token:
