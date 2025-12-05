@@ -16,7 +16,8 @@ import logging
 import requests
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
+# Set backend before importing pyplot to avoid configuration issues
+matplotlib.use('Agg')  # Use non-interactive backend for server environments
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
@@ -92,8 +93,9 @@ class YouTubeAPIClient:
                 # Check for API errors
                 if "error" in data:
                     error_msg = data["error"].get("message", "Unknown API error")
-                    logger.error(f"API Error: {error_msg}")
-                    raise requests.exceptions.RequestException(f"API Error: {error_msg}")
+                    error_code = data["error"].get("code", "N/A")
+                    logger.error(f"API Error (code {error_code}): {error_msg} [URL: {url}]")
+                    raise requests.exceptions.RequestException(f"API Error (code {error_code}): {error_msg}")
                     
                 return data
                 
@@ -142,14 +144,31 @@ class YouTubeAPIClient:
             
         Returns:
             Number of playlists
+            
+        Note:
+            This method handles pagination to count all playlists,
+            even if there are more than 50.
         """
         url = f"{self.base_url}/playlists?part=snippet&channelId={channel_id}&key={self.api_key}&maxResults=50"
         logger.info("Fetching playlists...")
         
-        response = self._make_request(url)
+        total_playlists = 0
+        next_page_token = None
         
-        # Handle pagination if there are more than 50 playlists
-        total_playlists = len(response.get("items", []))
+        # Handle pagination to get all playlists
+        while True:
+            page_url = url
+            if next_page_token:
+                page_url += f"&pageToken={next_page_token}"
+                
+            response = self._make_request(page_url)
+            total_playlists += len(response.get("items", []))
+            
+            next_page_token = response.get("nextPageToken")
+            if not next_page_token:
+                break
+                
+            logger.debug(f"Fetching next page of playlists... (total so far: {total_playlists})")
         
         return total_playlists
 
